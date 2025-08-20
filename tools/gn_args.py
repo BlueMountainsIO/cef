@@ -64,7 +64,6 @@ from __future__ import absolute_import
 from __future__ import print_function
 import os
 import platform as python_platform
-import re
 import shlex
 import sys
 
@@ -96,103 +95,7 @@ def msg(msg):
     print('NOTE: ' + msg)
 
 
-def ParseValue(value_str):
-  """
-  Parse a GN value string and return the appropriate Python type.
-  """
-  value_str = value_str.strip()
-
-  # Handle quoted strings.
-  if (value_str.startswith('"') and value_str.endswith('"')) or \
-     (value_str.startswith("'") and value_str.endswith("'")):
-    # Remove quotes.
-    return value_str[1:-1]
-
-  # Handle boolean values.
-  if value_str.lower() == 'true':
-    return True
-  elif value_str.lower() == 'false':
-    return False
-
-  # Handle numeric values.
-  try:
-    if '.' in value_str:
-      return float(value_str)
-    else:
-      return int(value_str)
-  except ValueError:
-    pass
-
-  # Handle arrays (basic support).
-  if value_str.startswith('[') and value_str.endswith(']'):
-    # Simple array parsing - assumes simple comma-separated values.
-    inner = value_str[1:-1].strip()
-    if not inner:
-      return []
-
-    items = []
-    for item in inner.split(','):
-      item = item.strip()
-      if item:
-        items.append(ParseValue(item))
-    return items
-
-  # Return as string if no other type matches.
-  return value_str
-
-
-def FormatValue(val):
-  """
-  Return the GN value string for a Python value.
-  """
-  if isinstance(val, bool):
-    if val:
-      return 'true'
-    else:
-      return 'false'
-  elif isinstance(val, int) or isinstance(val, float):
-    return val
-  elif isinstance(val, list):
-    return '[' + ', '.join([FormatValue(v) for v in list]) + ']'
-  else:
-    return '"%s"' % val
-  return val
-
-
-def ParseArgsFile(filepath):
-  """
-  Parse a GN args file and return all name/value pairs as a dictionary.
-  """
-  result = {}
-
-  if not os.path.exists(filepath):
-    raise FileNotFoundError(f"File not found: {filepath}")
-
-  with open(filepath, 'r') as f:
-    lines = f.readlines()
-
-  for line in lines:
-    line = line.strip()
-
-    # Skip empty lines and comments.
-    if not line or line.startswith('#'):
-      continue
-
-    # Look for variable assignments (name = value).
-    match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$', line)
-    if not match:
-      continue
-
-    var_name = match.group(1)
-    var_value = match.group(2).strip()
-
-    # Parse the value based on its format.
-    result[var_name] = ParseValue(var_value)
-
-  return result
-
-
-def ParseNameValueList(name_value_list):
+def NameValueListToDict(name_value_list):
   """
   Takes an array of strings of the form 'NAME=VALUE' and creates a dictionary
   of the pairs. If a string is simply NAME, then the value in the dictionary
@@ -201,13 +104,23 @@ def ParseNameValueList(name_value_list):
   result = {}
   for item in name_value_list:
     tokens = item.split('=', 1)
-    key = tokens[0].strip()
     if len(tokens) == 2:
-      # Parse the value based on its format.
-      result[key] = ParseValue(tokens[1])
+      token_value = tokens[1]
+      if token_value.lower() == 'true':
+        token_value = True
+      elif token_value.lower() == 'false':
+        token_value = False
+      else:
+        # If we can make it an int, use that, otherwise, use the string.
+        try:
+          token_value = int(token_value)
+        except ValueError:
+          pass
+      # Set the variable to the supplied value.
+      result[tokens[0]] = token_value
     else:
       # No value supplied, treat it as a boolean and set it.
-      result[key] = True
+      result[tokens[0]] = True
   return result
 
 
@@ -230,6 +143,22 @@ def MergeDicts(*dict_args):
   for dictionary in dict_args:
     result.update(dictionary)
   return result
+
+
+def GetValueString(val):
+  """
+  Return the string representation of |val| expected by GN.
+  """
+  if isinstance(val, bool):
+    if val:
+      return 'true'
+    else:
+      return 'false'
+  elif isinstance(val, int):
+    return val
+  else:
+    return '"%s"' % val
+  return val
 
 
 def GetChromiumDefaultArgs(is_debug):
@@ -283,6 +212,9 @@ def GetRecommendedDefaultArgs():
   # the defaults.
 
   result = {
+      # Enable NaCL. Default is true. False is recommended for faster builds.
+      'enable_nacl': False,
+
       # Disable component builds. Default depends on the platform. True results
       # in faster local builds but False is required to create a CEF binary
       # distribution.
@@ -309,6 +241,10 @@ def GetRecommendedDefaultArgs():
     # the computation of the CDM storage ID.
     result['alternate_cdm_storage_id_key'] = '968b476909da4373b08903c28e859454'
 
+  if platform == 'windows':
+    # Disable siso usage on Windows due to initialization errors.
+    result['use_siso'] = False
+
   if platform != 'windows':
     # Only allow non-component Debug builds on non-Windows platforms. These
     # builds will fail on Windows due to linker issues (running out of memory,
@@ -329,15 +265,6 @@ def GetRecommendedDefaultArgs():
     result['use_qt5'] = False
     result['use_qt6'] = False
 
-    # Set the blink TLS model to local-dynamic.
-    # https://github.com/chromiumembedded/cef/issues/3803#issuecomment-2980423520
-    result['blink_heap_inside_shared_library'] = True
-
-  # This file may exist when building using a source tarball.
-  tarball_args_file = os.path.join(src_dir, 'tarball_args.gn')
-  if os.path.isfile(tarball_args_file):
-    result.update(ParseArgsFile(tarball_args_file))
-
   return result
 
 
@@ -345,7 +272,7 @@ def GetGNEnvArgs():
   """
   Return GN args specified via the GN_DEFINES env variable.
   """
-  return ParseNameValueList(ShlexEnv('GN_DEFINES'))
+  return NameValueListToDict(ShlexEnv('GN_DEFINES'))
 
 
 def GetRequiredArgs():
@@ -390,7 +317,7 @@ def GetMergedArgs(build_args):
   for key in required.keys():
     if key in dict:
       assert dict[key] == required[key], \
-          "%s=%s is required" % (key, FormatValue(required[key]))
+          "%s=%s is required" % (key, GetValueString(required[key]))
 
   return MergeDicts(dict, required)
 
@@ -595,6 +522,62 @@ def GetConfigArgs(args, is_debug, cpu):
   return result
 
 
+def GetConfigArgsSandbox(platform, args, is_debug, cpu):
+  """
+  Return merged GN args for the cef_sandbox configuration and validate.
+  """
+  add_args = {
+      # Avoid libucrt.lib linker errors.
+      'use_allocator_shim': False,
+
+      # PartitionAlloc is selected as the default allocator in some cases.
+      # We can't use it because it requires use_allocator_shim=true.
+      'use_partition_alloc_as_malloc': False,
+      'use_partition_alloc': False,
+
+      # These require use_partition_alloc_as_malloc=true, so disable them.
+      'enable_backup_ref_ptr_support': False,
+      'enable_dangling_raw_ptr_checks': False,
+      'enable_dangling_raw_ptr_feature_flag': False,
+
+      # Avoid /LTCG linker warnings and generate smaller lib files.
+      'is_official_build': False,
+
+      # Disable use of thin archives with lld. Thin archives contain just the
+      # symbol table and the path to find the original .o files. They are
+      # generally incompatible with default platform ld/link versions and
+      # shouldn't be distributed due to the external .o file dependencies.
+      'use_thin_archives': False,
+
+      # Enable base target customizations necessary for distribution of the
+      # cef_sandbox static library.
+      'is_cef_sandbox_build': True,
+  }
+
+  if platform == 'windows':
+    # Avoid Debug build linker errors caused by custom libc++.
+    add_args['use_custom_libcxx'] = False
+
+    # Avoid dependency on //third_party/perfetto:libperfetto which fails to
+    # build with MSVC libc++.
+    add_args['enable_base_tracing'] = False
+
+    # Allow non-component Debug builds for the sandbox.
+    add_args['forbid_non_component_debug_builds'] = False
+
+  if not is_debug:
+    # Disable DCHECKs in Release builds.
+    add_args['dcheck_always_on'] = False
+
+  result = MergeDicts(args, add_args, {
+      'is_debug': is_debug,
+      'target_cpu': cpu,
+  })
+
+  ValidateArgs(result, is_debug)
+  return result
+
+
 def LinuxSysrootExists(cpu):
   """
   Returns true if the sysroot for the specified |cpu| architecture exists.
@@ -668,6 +651,15 @@ def GetAllPlatformConfigs(build_args, quiet=False):
       result['Debug_GN_' + cpu] = GetConfigArgs(args, True, cpu)
     result['Release_GN_' + cpu] = GetConfigArgs(args, False, cpu)
 
+    if platform in ('windows', 'mac') and GetArgValue(args,
+                                                      'is_official_build'):
+      # Build cef_sandbox.lib with a different configuration.
+      if create_debug:
+        result['Debug_GN_' + cpu + '_sandbox'] = GetConfigArgsSandbox(
+            platform, args, True, cpu)
+      result['Release_GN_' + cpu + '_sandbox'] = GetConfigArgsSandbox(
+          platform, args, False, cpu)
+
   out_configs = os.environ.get('GN_OUT_CONFIGS', None)
   if not out_configs is None:
     # Only generate the specified configurations.
@@ -689,7 +681,7 @@ def GetConfigFileContents(args):
   """
   pairs = []
   for k in sorted(args.keys()):
-    pairs.append("%s=%s" % (k, FormatValue(args[k])))
+    pairs.append("%s=%s" % (k, GetValueString(args[k])))
   return "\n".join(pairs)
 
 

@@ -36,7 +36,11 @@ macro(PRINT_CEF_CONFIG)
 
   message(STATUS "CEF sandbox:                  ${USE_SANDBOX}")
 
-  message(STATUS "Standard libraries:           ${CEF_STANDARD_LIBS}")
+  set(_libraries ${CEF_STANDARD_LIBS})
+  if(OS_WINDOWS AND USE_SANDBOX)
+    list(APPEND _libraries ${CEF_SANDBOX_STANDARD_LIBS})
+  endif()
+  message(STATUS "Standard libraries:           ${_libraries}")
 
   message(STATUS "Compile defines:              ${CEF_COMPILER_DEFINES}")
   message(STATUS "Compile defines (Debug):      ${CEF_COMPILER_DEFINES_DEBUG}")

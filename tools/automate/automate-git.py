@@ -1170,7 +1170,7 @@ if not branch_is_master:
     sys.exit(1)
 
 # True if the requested branch is 7151 or older.
-branch_is_7151_or_older = not branch_is_master and int(cef_branch) <= 7151
+branch_is_7151_or_older = True #not branch_is_master and int(cef_branch) <= 7151
 
 if options.armbuild:
   if platform != 'linux':
