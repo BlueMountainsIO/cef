@@ -1,31 +1,29 @@
 diff --git base/BUILD.gn base/BUILD.gn
-index 59721ed3c9e26fd83c553d82030f3e76af0c3dfd..c0ee7567a534cc3fea8c9722102d5d16e5991159 100644
+index f73ed42f84ca486bc0f103370823dbaa14afa35f..f72144503432e2a8bee0ac57fedca4139ba16338 100644
 --- base/BUILD.gn
 +++ base/BUILD.gn
-@@ -41,6 +41,7 @@ import("//build/rust/rust_static_library.gni")
- import("//build/timestamp.gni")
+@@ -39,6 +39,7 @@ import("//build/rust/rust_bindgen.gni")
+ import("//build/rust/rust_static_library.gni")
  import("//build/util/process_version.gni")
  import("//build_overrides/build.gni")
 +import("//cef/libcef/features/features.gni")
  import("//testing/libfuzzer/fuzzer_test.gni")
  import("//testing/test.gni")
  
-@@ -1531,7 +1532,13 @@ component("base") {
+@@ -1534,6 +1535,12 @@ component("base") {
      "hash/md5.h",
+     "hash/sha1.cc",
      "hash/sha1.h",
-   ]
--  if (is_nacl) {
 +
 +  deps += [ "//cef/libcef/features:buildflags" ]
 +  if (enable_cef) {
 +    configs += [ "//cef/libcef/features:config" ]
 +  }
 +
-+  if (is_nacl || is_cef_sandbox_build) {
-     sources += [
-       "hash/md5_nacl.cc",
-       "hash/md5_nacl.h",
-@@ -1982,6 +1989,12 @@ component("base") {
+   ]
+   public_deps += [ "//third_party/boringssl" ]
+ 
+@@ -1950,6 +1957,12 @@ component("base") {
        defines += [ "COM_INIT_CHECK_HOOK_DISABLED" ]
      }
  
@@ -59,130 +57,6 @@ index f680f63cffc5b1277e8ce8ce7ef837313907f432..9cb615bbc8a5a3f9eafa477835d6e655
      DCHECK([&] {
        auto const was_set = is_initialized_check_flag_.test_and_set();
        is_initialized_check_flag_.clear();
-diff --git base/hash/md5.h base/hash/md5.h
-index 4d358570d81c547ce019001449a1f5d0bc692bdb..09bf13a965541f7c23675b1ad43d8c079a595166 100644
---- base/hash/md5.h
-+++ base/hash/md5.h
-@@ -11,8 +11,9 @@
- #include "base/base_export.h"
- #include "base/containers/span.h"
- #include "build/build_config.h"
-+#include "cef/libcef/features/features.h"
- 
--#if BUILDFLAG(IS_NACL)
-+#if BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "base/hash/md5_nacl.h"
- #else
- #include "base/hash/md5_boringssl.h"
-diff --git base/hash/sha1.h base/hash/sha1.h
-index 2158b648ca58ab4ebf05b0c3e1186a26b2d97ffc..8a8cb13b2fd74bde20655a3018e7c1042fd251d3 100644
---- base/hash/sha1.h
-+++ base/hash/sha1.h
-@@ -15,7 +15,9 @@
- #include "base/compiler_specific.h"
- #include "base/containers/span.h"
- #include "build/build_config.h"
--#if BUILDFLAG(IS_NACL)
-+#include "cef/libcef/features/features.h"
-+
-+#if BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "base/hash/sha1_nacl.h"
- #else
- #include "base/hash/sha1_boringssl.h"
-diff --git base/json/json_reader.cc base/json/json_reader.cc
-index f32622d353f1df25e4f6e3aca9aeae658956ee90..def35a3ae1c5c30549dea2853239c7635677c052 100644
---- base/json/json_reader.cc
-+++ base/json/json_reader.cc
-@@ -12,8 +12,9 @@
- #include "base/logging.h"
- #include "base/metrics/histogram_macros.h"
- #include "build/build_config.h"
-+#include "cef/libcef/features/features.h"
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !(BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD))
- #include "base/strings/string_view_rust.h"
- #include "third_party/rust/serde_json_lenient/v0_2/wrapper/functions.h"
- #include "third_party/rust/serde_json_lenient/v0_2/wrapper/lib.rs.h"
-@@ -21,7 +22,7 @@
- 
- // TODO(crbug.com/40811643): Move the C++ parser into components/nacl to just
- // run in-process there. Don't compile base::JSONReader on NaCL at all.
--#if !BUILDFLAG(IS_NACL)
-+#if !(BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD))
- 
- namespace {
- const char kSecurityJsonParsingTime[] = "Security.JSONParser.ParsingTime";
-@@ -137,7 +138,7 @@ namespace base {
- std::optional<Value> JSONReader::Read(std::string_view json,
-                                       int options,
-                                       size_t max_depth) {
--#if BUILDFLAG(IS_NACL)
-+#if (BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD))
-   internal::JSONParser parser(options, max_depth);
-   return parser.Parse(json);
- #else   // BUILDFLAG(IS_NACL)
-@@ -182,7 +183,7 @@ std::optional<Value::List> JSONReader::ReadList(std::string_view json,
- JSONReader::Result JSONReader::ReadAndReturnValueWithError(
-     std::string_view json,
-     int options) {
--#if BUILDFLAG(IS_NACL)
-+#if (BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD))
-   internal::JSONParser parser(options);
-   auto value = parser.Parse(json);
-   if (!value) {
-@@ -223,7 +224,7 @@ bool JSONReader::UsingRust() {
-   if (!base::FeatureList::GetInstance()) {
-     return false;
-   }
--#if BUILDFLAG(IS_NACL)
-+#if (BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD))
-   return false;
- #else
-   return base::FeatureList::IsEnabled(base::features::kUseRustJsonParser);
-diff --git base/logging.cc base/logging.cc
-index 26ba1a286e4510d74d11eff855e1d3aa0176a5c7..99b2ce6feb274f25bc9d778a1383ab3658b77804 100644
---- base/logging.cc
-+++ base/logging.cc
-@@ -51,6 +51,7 @@
- #include "base/trace_event/base_tracing.h"
- #include "base/vlog.h"
- #include "build/build_config.h"
-+#include "cef/libcef/features/features.h"
- #include "third_party/abseil-cpp/absl/base/internal/raw_logging.h"
- #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
- 
-@@ -530,7 +531,7 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
-   }
- #endif
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
-   // Connects Rust logging with the //base logging functionality.
-   internal::init_rust_log_crate();
- #endif
-diff --git base/metrics/crc32.cc base/metrics/crc32.cc
-index 83e3cee2579abeb8f4981cc54b3a0bbba0313216..8238767ab91268c4c0250294f67eb2c7b013c67c 100644
---- base/metrics/crc32.cc
-+++ base/metrics/crc32.cc
-@@ -3,14 +3,15 @@
- // found in the LICENSE file.
- 
- #include "base/metrics/crc32.h"
-+#include "cef/libcef/features/features.h"
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "third_party/zlib/zlib.h"
- #endif  // !BUILDFLAG(IS_NACL)
- 
- namespace base {
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- uint32_t Crc32(uint32_t sum, span<const uint8_t> data) {
-   if (data.empty()) {
-     return sum;
 diff --git base/process/memory.h base/process/memory.h
 index 5d11d4a1560b1275eb4c8360eb4ceb7a2eee9d1b..242a93bcca8ed0b79aa74c475a9e0a1a89a579dd 100644
 --- base/process/memory.h
@@ -208,105 +82,8 @@ index 5d11d4a1560b1275eb4c8360eb4ceb7a2eee9d1b..242a93bcca8ed0b79aa74c475a9e0a1a
  
  }  // namespace win
  #endif
-diff --git base/rand_util.h base/rand_util.h
-index d650943a7b75aad2ca715dbd0c0370ca5fff5508..abd5217f8ceedd15fcca0907529ad5e4ab332d82 100644
---- base/rand_util.h
-+++ base/rand_util.h
-@@ -23,8 +23,9 @@
- #include "base/numerics/safe_conversions.h"
- #include "base/time/time.h"
- #include "build/build_config.h"
-+#include "cef/libcef/features/features.h"
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "third_party/boringssl/src/include/openssl/rand.h"
- #endif
- 
-@@ -189,7 +190,7 @@ class RandomBitGenerator {
-   ~RandomBitGenerator() = default;
- };
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- class NonAllocatingRandomBitGenerator {
-  public:
-   using result_type = uint64_t;
-diff --git base/rand_util_win.cc base/rand_util_win.cc
-index 0b772cbae8916dbf24bdc215745afed94cd51839..b19183b34d17658d8cc520b43878dd96d40d5f59 100644
---- base/rand_util_win.cc
-+++ base/rand_util_win.cc
-@@ -15,7 +15,11 @@
- 
- #include "base/check.h"
- #include "base/feature_list.h"
-+#include "cef/libcef/features/features.h"
-+
-+#if !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "third_party/boringssl/src/include/openssl/rand.h"
-+#endif
- 
- // Prototype for ProcessPrng.
- // See: https://learn.microsoft.com/en-us/windows/win32/seccng/processprng
-@@ -27,6 +31,7 @@ namespace base {
- 
- namespace internal {
- 
-+#if !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- namespace {
- 
- // The BoringSSl helpers are duplicated in rand_util_fuchsia.cc and
-@@ -48,6 +53,10 @@ bool UseBoringSSLForRandBytes() {
-   return g_use_boringssl.load(std::memory_order_relaxed);
- }
- 
-+#else  // !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
-+void ConfigureBoringSSLBackedRandBytesFieldTrial() {}
-+#endif
-+
- }  // namespace internal
- 
- namespace {
-@@ -65,11 +74,13 @@ decltype(&ProcessPrng) GetProcessPrng() {
- }
- 
- void RandBytesInternal(span<uint8_t> output, bool avoid_allocation) {
-+#if !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
-   if (!avoid_allocation && internal::UseBoringSSLForRandBytes()) {
-     // BoringSSL's RAND_bytes always returns 1. Any error aborts the program.
-     (void)RAND_bytes(output.data(), output.size());
-     return;
-   }
-+#endif  // !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- 
-   static decltype(&ProcessPrng) process_prng_fn = GetProcessPrng();
-   BOOL success =
-diff --git base/unguessable_token.cc base/unguessable_token.cc
-index ea33ca66f384c28806faccad530f4c3d8a5ef077..33f4cc76f76bd0c935d96060579d8ea557a1a79f 100644
---- base/unguessable_token.cc
-+++ base/unguessable_token.cc
-@@ -11,8 +11,9 @@
- #include "base/format_macros.h"
- #include "base/rand_util.h"
- #include "build/build_config.h"
-+#include "cef/libcef/features/features.h"
- 
--#if !BUILDFLAG(IS_NACL)
-+#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
- #include "third_party/boringssl/src/include/openssl/mem.h"
- #endif
- 
-@@ -58,7 +59,7 @@ std::optional<UnguessableToken> UnguessableToken::DeserializeFromString(
- }
- 
- bool operator==(const UnguessableToken& lhs, const UnguessableToken& rhs) {
--#if BUILDFLAG(IS_NACL)
-+#if BUILDFLAG(IS_NACL) || BUILDFLAG(IS_CEF_SANDBOX_BUILD)
-   // BoringSSL is unavailable for NaCl builds so it remains timing dependent.
-   return lhs.token_ == rhs.token_;
- #else
 diff --git base/win/sid.cc base/win/sid.cc
-index 6a91e984f5161557a9ab38f86523d0edb371c275..4433591d96c9901c74c0f0540ddc1a80ac9ba468 100644
+index 42f3fc4051a7a33315de243c3a74d377fd47e0ee..b8ca892b14720e4e9d0b44bfabcc86499fa2a613 100644
 --- base/win/sid.cc
 +++ base/win/sid.cc
 @@ -29,12 +29,56 @@
