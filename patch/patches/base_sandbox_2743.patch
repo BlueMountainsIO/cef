@@ -10,19 +10,18 @@ index f73ed42f84ca486bc0f103370823dbaa14afa35f..f72144503432e2a8bee0ac57fedca413
  import("//testing/libfuzzer/fuzzer_test.gni")
  import("//testing/test.gni")
  
-@@ -1534,6 +1535,12 @@ component("base") {
+@@ -1534,5 +1534,11 @@ component("base") {
      "hash/md5.h",
      "hash/sha1.cc",
      "hash/sha1.h",
+   ]
 +
 +  deps += [ "//cef/libcef/features:buildflags" ]
 +  if (enable_cef) {
 +    configs += [ "//cef/libcef/features:config" ]
 +  }
 +
-   ]
    public_deps += [ "//third_party/boringssl" ]
- 
 @@ -1950,6 +1957,12 @@ component("base") {
        defines += [ "COM_INIT_CHECK_HOOK_DISABLED" ]
      }
