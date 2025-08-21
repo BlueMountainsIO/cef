@@ -1,0 +1,13 @@
+diff --git third_party/perfetto/src/tracing/internal/tracing_muxer_impl.cc third_party/perfetto/src/tracing/internal/tracing_muxer_impl.cc
+index 2c2014de83..d5611b8ded 100644
+--- third_party/perfetto/src/tracing/internal/tracing_muxer_impl.cc
++++ third_party/perfetto/src/tracing/internal/tracing_muxer_impl.cc
+@@ -14,6 +14,8 @@
+  * limitations under the License.
+  */
+ 
++#define _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS 1
++
+ #include "src/tracing/internal/tracing_muxer_impl.h"
+ 
+ #include <algorithm>
