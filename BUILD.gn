@@ -1237,6 +1237,8 @@ if (is_win) {
     configs += [ ":libcef_includes_config" ]
     deps = [
       ":make_config_header",
+      ":make_api_versions_header",
+      ":make_version_header",
       "libcef/features:buildflags",
       "//sandbox",
     ]
