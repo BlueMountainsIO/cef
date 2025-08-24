@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tarfile
 import zipfile
+import os.path
 
 
 def create_zip_archive(input_dir):
@@ -592,6 +593,9 @@ def combine_libs(platform, build_dir, libs, dest_lib):
 
   for lib in libs:
     lib_path = os.path.join(build_dir, lib)
+    if "*" not in lib_path:
+        if not os.path.isfile(lib_path):
+             raise Exception('Error: file does not exist: ' + lib_path)
     for path in get_files(lib_path):  # Expand wildcards in |lib_path|.
       if not path_exists(path):
         raise Exception('File not found: ' + path)
@@ -1184,6 +1188,60 @@ elif platform == 'windows':
       'obj\\third_party\\abseil-cpp\\absl\\synchronization\\**\\*.obj',
       'obj\\third_party\\abseil-cpp\\absl\\time\\**\\*.obj',
       'obj\\third_party\\abseil-cpp\\absl\\types\\**\\*.obj',
+      'obj\\third_party\\boringssl\\boringssl.lib',
+      'obj\\third_party\\boringssl\\boringssl_asm.lib',
+  ]
+  
+  sandbox_perfetto0 = [
+      'obj\\third_party\\perfetto\\src\\base\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\profiling\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto1 = [
+      'obj\\third_party\\perfetto\\src\\protovm\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\protozero\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto2 = [
+      'obj\\third_party\\perfetto\\src\\tracing\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto3 = [
+      'obj\\third_party\\perfetto\\src\\trace_processor\\containers\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\dataframe\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\db\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\export_json\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto4 = [
+      'obj\\third_party\\perfetto\\src\\trace_processor\\importers\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\metatrace\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto5 = [
+      'obj\\third_party\\perfetto\\src\\trace_processor\\sorter\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\storage\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\storage_minimal\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\tables\\**\\*.obj',
+      'obj\\third_party\\perfetto\\src\\trace_processor\\types\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto6 = [
+      'obj\\third_party\\perfetto\\src\\trace_processor\\util\\**\\*.obj',
+  ]
+  
+  sandbox_perfetto7 = [
+      'obj\\third_party\\perfetto\\**\\*.lib',
+      'obj\\third_party\\perfetto\\src\\android_stats\\**\\*.obj',
+      'obj\\third_party\\perfetto\\**\\*.lib',
+  ]
+  
+  sandbox_zlib = [
+      'obj\\third_party\\zlib\\**\\*.obj',
+  ]
+  
+  sandbox_jsoncpp = [
+      'obj\\third_party\\jsoncpp\\jsoncpp\\*.obj',
   ]
 
   # Generate the cef_sandbox.lib merged library. A separate *_sandbox build
@@ -1200,6 +1258,26 @@ elif platform == 'windows':
           make_dir(dst_dir, options.quiet)
           combine_libs(platform, src_dir, sandbox_libs,
                        os.path.join(dst_dir, 'cef_sandbox.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto0,
+                       os.path.join(dst_dir, 'perfetto0.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto1,
+                       os.path.join(dst_dir, 'perfetto1.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto2,
+                       os.path.join(dst_dir, 'perfetto2.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto3,
+                       os.path.join(dst_dir, 'perfetto3.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto4,
+                       os.path.join(dst_dir, 'perfetto4.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto5,
+                       os.path.join(dst_dir, 'perfetto5.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto6,
+                       os.path.join(dst_dir, 'perfetto6.lib'))
+          combine_libs(platform, src_dir, sandbox_perfetto7,
+                       os.path.join(dst_dir, 'perfetto7.lib'))
+          combine_libs(platform, src_dir, sandbox_zlib,
+                       os.path.join(dst_dir, 'zlib.lib'))
+          combine_libs(platform, src_dir, sandbox_jsoncpp,
+                       os.path.join(dst_dir, 'jsoncpp.lib'))
           break
 
   valid_build_dir = None
