@@ -1,8 +1,25 @@
 diff --git base/logging.cc base/logging.cc
-index 3a470897fa2fd3824f85c1705f1f78f6a133daf3..44679528c38d367a88c4ae592d8937a6a24b9d23 100644
+index 3a470897fa..44ba822e1b 100644
 --- base/logging.cc
 +++ base/logging.cc
-@@ -442,7 +442,30 @@ void WriteToFd(int fd, const char* data, size_t length) {
+@@ -49,6 +49,7 @@
+ #include "base/threading/platform_thread.h"
+ #include "base/trace_event/interned_args_helper.h"
+ #include "base/trace_event/typed_macros.h"
++#include "cef/libcef/features/features.h"
+ #include "base/vlog.h"
+ #include "build/build_config.h"
+ #include "third_party/abseil-cpp/absl/base/internal/raw_logging.h"
+@@ -119,7 +120,7 @@ typedef FILE* FileHandle;
+ #include "base/fuchsia/scoped_fx_logger.h"
+ #endif
+ 
+-#if !BUILDFLAG(IS_NACL)
++#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
+ #include "base/logging/rust_logger.rs.h"
+ #endif
+ 
+@@ -442,7 +443,30 @@ void WriteToFd(int fd, const char* data, size_t length) {
    }
  }
  
@@ -33,7 +50,7 @@ index 3a470897fa2fd3824f85c1705f1f78f6a133daf3..44679528c38d367a88c4ae592d8937a6
  #if !BUILDFLAG(IS_NACL)
    // In case of an out-of-memory condition, this code could be reentered when
    // constructing and storing the key. Using a static is not thread-safe, but if
-@@ -521,6 +544,11 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
+@@ -521,6 +545,11 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
    g_log_format = settings.log_format;
  #endif
  
@@ -45,6 +62,15 @@ index 3a470897fa2fd3824f85c1705f1f78f6a133daf3..44679528c38d367a88c4ae592d8937a6
    MaybeInitializeVlogInfo();
  
    g_logging_destination = settings.logging_dest;
+@@ -531,7 +560,7 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
+   }
+ #endif
+ 
+-#if !BUILDFLAG(IS_NACL)
++#if !BUILDFLAG(IS_NACL) && !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
+   // Connects Rust logging with the //base logging functionality.
+   internal::init_rust_log_crate();
+ #endif
 diff --git base/logging.h base/logging.h
 index 262a86ef023b2871b2ec94e4d42fb93480a17cc1..2a638248f5da3fb23d9c8cf5596562671edb15b8 100644
 --- base/logging.h
