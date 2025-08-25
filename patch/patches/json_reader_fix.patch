@@ -1,8 +1,8 @@
 diff --git base/json/json_reader.cc base/json/json_reader.cc
-index 664b729034..32a0cb16e4 100644
+index 664b729034..6787734fc3 100644
 --- base/json/json_reader.cc
 +++ base/json/json_reader.cc
-@@ -7,11 +7,1161 @@
+@@ -7,11 +7,1158 @@
  #include <string_view>
  #include <utility>
  
@@ -12,8 +12,6 @@ index 664b729034..32a0cb16e4 100644
  #include "base/strings/strcat.h"
  #include "base/strings/string_number_conversions.h"
  #include "build/build_config.h"
-+
-+#if BUILDFLAG(IS_CEF_SANDBOX_BUILD)
 +
 +// Copyright 2012 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
@@ -1158,13 +1156,12 @@ index 664b729034..32a0cb16e4 100644
 +}  // namespace base::internal
 +
 +
-+#endif
 +
 +#if !BUILDFLAG(IS_CEF_SANDBOX_BUILD)
  #include "base/strings/string_view_rust.h"
  #include "third_party/rust/serde_json_lenient/v0_2/wrapper/functions.h"
  #include "third_party/rust/serde_json_lenient/v0_2/wrapper/lib.rs.h"
-@@ -122,8 +1272,19 @@ base::JSONReader::Result DecodeJSONInRust(std::string_view json,
+@@ -122,8 +1269,19 @@ base::JSONReader::Result DecodeJSONInRust(std::string_view json,
  }  // namespace
  }  // namespace serde_json_lenient
  
@@ -1184,7 +1181,7 @@ index 664b729034..32a0cb16e4 100644
  std::string JSONReader::Error::ToString() const {
    return base::StrCat({"line ", base::NumberToString(line), ", column ",
                         base::NumberToString(column), ": ", message});
-@@ -133,14 +1294,23 @@ std::string JSONReader::Error::ToString() const {
+@@ -133,14 +1291,23 @@ std::string JSONReader::Error::ToString() const {
  std::optional<Value> JSONReader::Read(std::string_view json,
                                        int options,
                                        size_t max_depth) {
@@ -1214,7 +1211,7 @@ index 664b729034..32a0cb16e4 100644
  }
  
  // static
-@@ -169,9 +1339,37 @@ std::optional<Value::List> JSONReader::ReadList(std::string_view json,
+@@ -169,9 +1336,37 @@ std::optional<Value::List> JSONReader::ReadList(std::string_view json,
  JSONReader::Result JSONReader::ReadAndReturnValueWithError(
      std::string_view json,
      int options) {
