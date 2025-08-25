@@ -999,9 +999,13 @@ if mode == 'standard' or mode == 'minimal':
   if platform == 'windows':
     transfer_gypi_files(cef_dir, cef_paths2['libcef_dll_wrapper_sources_win'], \
                         'libcef_dll/', libcef_dll_dir, options.quiet)
+    transfer_gypi_files(cef_dir, cef_paths2['includes_wrapper_win'], \
+                        'include/', include_dir, options.quiet)
   elif platform == 'mac':
     transfer_gypi_files(cef_dir, cef_paths2['libcef_dll_wrapper_sources_mac'], \
-                        'libcef_dll/', libcef_dll_dir, options.quiet)   
+                        'libcef_dll/', libcef_dll_dir, options.quiet)  
+    transfer_gypi_files(cef_dir, cef_paths2['includes_wrapper_mac'], \
+                        'include/', include_dir, options.quiet)   
 
   if mode == 'standard' or mode == 'minimal':
     # transfer additional files
